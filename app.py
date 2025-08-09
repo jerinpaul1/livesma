@@ -30,10 +30,8 @@ def fetch_data(ticker, short_window, long_window):
     else:
         return pd.DataFrame() # No data to calculate SMAs
 
-    # Remove the line that selects only the 'Close' column to keep all necessary columns for candlestick
-    # df = df[['Close']]
-    df['SMA_short'] = df[('Price', 'Close')].rolling(window=short_window).mean()
-    df['SMA_long'] = df[('Price', 'Close')].rolling(window=long_window).mean()
+    df['SMA_short'] = df['Close'].rolling(window=short_window).mean()
+    df['SMA_long'] = df['Close'].rolling(window=long_window).mean()
     df.dropna(inplace=True) # Drop rows with NaN created by rolling window
     return df
 
