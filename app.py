@@ -25,16 +25,22 @@ def fetch_data(ticker, short_window, long_window):
 
     # Ensure windows are not larger than available data
     if len(df) > 0:
-        short_window = min(short_window, len(df))
-        long_window = min(long_window, len(df))
-    else:
-        return pd.DataFrame() # No data to calculate SMAs
+        # Check if MultiIndex exists and adjust column access
+        if isinstance(df.columns, pd.MultiIndex):
+             close_price = df[('Price', 'Close')]
+        else:
+             close_price = df['Close']
 
-    # Remove the line that selects only the 'Close' column to keep all necessary columns for candlestick
-    # df = df[['Close']]
-    df['SMA_short'] = df[('Price', 'Close')].rolling(window=short_window).mean()
-    df['SMA_long'] = df[('Price', 'Close')].rolling(window=long_window).mean()
-    df.dropna(inplace=True) # Drop rows with NaN created by rolling window
+        # Ensure windows are not larger than available data after getting close price
+        short_window = min(short_window, len(close_price))
+        long_window = min(long_window, len(close_price))
+
+        # Calculate SMAs using the correct Close price Series
+        df['SMA_short'] = close_price.rolling(window=short_window).mean()
+        df['SMA_long'] = close_price.rolling(window=long_window).mean()
+
+        df.dropna(inplace=True) # Drop rows with NaN created by rolling window
+
     return df
 
 # Get data
@@ -54,6 +60,7 @@ else:
 
         # Robustly check for signal after ensuring valid data
         try:
+            # Access SMA columns directly as they are not MultiIndex after calculation
             if (latest['SMA_short'] > latest['SMA_long']).item() and (prev['SMA_short'] <= prev['SMA_long']).item():
                 signal = "BUY"
             elif (latest['SMA_short'] < latest['SMA_long']).item() and (prev['SMA_short'] >= prev['SMA_long']).item():
@@ -70,7 +77,15 @@ else:
     with col1:
         # Ensure we handle cases where latest or prev might not exist if df is very small but passed the initial check
         if not df.empty:
-             st.metric(label="Current Price", value=f"${df['Close'].iloc[-1].item():.2f}")
+             # Access Close price using MultiIndex if it exists
+             if isinstance(df.columns, pd.MultiIndex):
+                 current_price = df[('Price', 'Close')].iloc[-1].item()
+             else:
+                 current_price = df['Close'].iloc[-1].item()
+
+             st.metric(label="Current Price", value=f"${current_price:.2f}")
+
+             # Access SMA columns directly
              if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
                 st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1].item():.2f}")
              else:
@@ -82,6 +97,7 @@ else:
 
     with col2:
          if not df.empty:
+            # Access SMA columns directly
             if 'SMA_long' in df.columns and not pd.isna(df['SMA_long'].iloc[-1]):
                 st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1].item():.2f}")
             else:
@@ -95,14 +111,28 @@ else:
     # Plot candlestick chart with SMAs
     if not df.empty:
         fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=df.index,
-            open=df['Open'],
-            high=df['High'],
-            low=df['Low'],
-            close=df['Close'],
-            name="Candlesticks"
-        ))
+
+        # Access candlestick data using MultiIndex if it exists
+        if isinstance(df.columns, pd.MultiIndex):
+             fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df[('Price', 'Open')],
+                high=df[('Price', 'High')],
+                low=df[('Price', 'Low')],
+                close=df[('Price', 'Close')],
+                name="Candlesticks"
+            ))
+        else:
+             fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name="Candlesticks"
+            ))
+
+
         if 'SMA_short' in df.columns:
             fig.add_trace(go.Scatter(
                 x=df.index, y=df['SMA_short'],
