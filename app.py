@@ -23,29 +23,18 @@ def fetch_data(ticker, short_window, long_window):
     if df.empty:
         return pd.DataFrame() # Return empty if no data
 
-    # Normalize column names: flatten MultiIndex if it exists
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = ['_'.join(col).strip() for col in df.columns.values]
-
     # Ensure windows are not larger than available data
     if len(df) > 0:
-        # Use normalized column name for Close price
-        close_column = 'Close' if 'Close' in df.columns else 'Price_Close'
-        if close_column not in df.columns:
-             return pd.DataFrame() # Return empty if Close column not found
-
-
-        short_window = min(short_window, len(df[close_column]))
-        long_window = min(long_window, len(df[close_column]))
+        short_window = min(short_window, len(df))
+        long_window = min(long_window, len(df))
     else:
         return pd.DataFrame() # No data to calculate SMAs
 
-    # Calculate SMAs using the normalized Close price column
-    df['SMA_short'] = df[close_column].rolling(window=short_window).mean()
-    df['SMA_long'] = df[close_column].rolling(window=long_window).mean()
-
+    # Remove the line that selects only the 'Close' column to keep all necessary columns for candlestick
+    # df = df[['Close']]
+    df['SMA_short'] = df[('Price', 'Close')].rolling(window=short_window).mean()
+    df['SMA_long'] = df[('Price', 'Close')].rolling(window=long_window).mean()
     df.dropna(inplace=True) # Drop rows with NaN created by rolling window
-
     return df
 
 # Get data
@@ -65,7 +54,6 @@ else:
 
         # Robustly check for signal after ensuring valid data
         try:
-            # Access SMA columns directly as they are not MultiIndex after calculation
             if (latest['SMA_short'] > latest['SMA_long']).item() and (prev['SMA_short'] <= prev['SMA_long']).item():
                 signal = "BUY"
             elif (latest['SMA_short'] < latest['SMA_long']).item() and (prev['SMA_short'] >= prev['SMA_long']).item():
@@ -82,11 +70,7 @@ else:
     with col1:
         # Ensure we handle cases where latest or prev might not exist if df is very small but passed the initial check
         if not df.empty:
-             # Use normalized column name for Current Price
-             close_column = 'Close' if 'Close' in df.columns else 'Price_Close'
-             st.metric(label="Current Price", value=f"${df[close_column].iloc[-1].item():.2f}")
-
-             # Access SMA columns directly
+             st.metric(label="Current Price", value=f"${df['Close'].iloc[-1].item():.2f}")
              if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
                 st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1].item():.2f}")
              else:
@@ -98,7 +82,6 @@ else:
 
     with col2:
          if not df.empty:
-            # Access SMA columns directly
             if 'SMA_long' in df.columns and not pd.isna(df['SMA_long'].iloc[-1]):
                 st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1].item():.2f}")
             else:
@@ -112,28 +95,14 @@ else:
     # Plot candlestick chart with SMAs
     if not df.empty:
         fig = go.Figure()
-
-        # Use normalized column names for candlestick data
-        open_column = 'Open' if 'Open' in df.columns else 'Price_Open'
-        high_column = 'High' if 'High' in df.columns else 'Price_High'
-        low_column = 'Low' if 'Low' in df.columns else 'Price_Low'
-        close_column = 'Close' if 'Close' in df.columns else 'Price_Close'
-
-
-        # Check if necessary columns exist after normalization
-        if all(col in df.columns for col in [open_column, high_column, low_column, close_column]):
-            fig.add_trace(go.Candlestick(
-                x=df.index,
-                open=df[open_column],
-                high=df[high_column],
-                low=df[low_column],
-                close=df[close_column],
-                name="Candlesticks"
-            ))
-        else:
-            st.warning("Candlestick data columns not found after processing.")
-
-
+        fig.add_trace(go.Candlestick(
+            x=df.index,
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'],
+            name="Candlesticks"
+        ))
         if 'SMA_short' in df.columns:
             fig.add_trace(go.Scatter(
                 x=df.index, y=df['SMA_short'],
