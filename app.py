@@ -22,25 +22,26 @@ def fetch_data(ticker, short_window, long_window):
         # Adjusted period and interval for potentially longer lookback if needed, but sticking to 1d for 1m interval
         df = yf.download(ticker, period="1d", interval="1m") # Use 1m interval for live
         if df.empty:
+            st.warning(f"No data fetched for {ticker}. Check ticker symbol and market hours.")
             return pd.DataFrame() # Return empty if no data
 
         # Normalize column names: flatten MultiIndex if it exists
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = ['_'.join(col).strip() for col in df.columns.values]
 
+        # Use normalized column name for Close price
+        close_column = 'Close' if 'Close' in df.columns else 'Price_Close'
+        if close_column not in df.columns:
+             st.warning(f"'{close_column}' column not found in fetched data for {ticker}. Check data source.")
+             return pd.DataFrame() # Return empty if Close column not found
+
         # Ensure windows are not larger than available data
         if len(df) > 0:
-            # Use normalized column name for Close price
-            close_column = 'Close' if 'Close' in df.columns else 'Price_Close'
-            if close_column not in df.columns:
-                 st.error(f"Close column not found after fetching data for {ticker}")
-                 return pd.DataFrame() # Return empty if Close column not found
-
-
             short_window = min(short_window, len(df[close_column]))
             long_window = min(long_window, len(df[close_column]))
         else:
-            return pd.DataFrame() # No data to calculate SMAs
+             st.warning(f"Not enough data points after column check for {ticker}.")
+             return pd.DataFrame() # No data to calculate SMAs
 
         # Calculate SMAs using the normalized Close price column
         df['SMA_short'] = df[close_column].rolling(window=short_window).mean()
@@ -56,9 +57,12 @@ def fetch_data(ticker, short_window, long_window):
 # Get data
 df = fetch_data(ticker, short_window, long_window)
 
-# Check if enough data exists
+# Check if enough data exists after all processing
 if df.empty or len(df) < max(short_window, long_window):
-    st.warning("Not enough data to calculate SMAs or signals. Try a different ticker or wait for market data.")
+    # The warning is already displayed within fetch_data or here
+    pass # Keep the existing warning logic if needed, but fetch_data now warns
+
+
 else:
     # check_signal logic (adapted for Streamlit)
     # We need at least two data points after dropping NaNs for signal calculation
