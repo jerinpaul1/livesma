@@ -3,7 +3,7 @@
 A **real-time stock market analysis dashboard** built with **Python, Streamlit, Plotly, and Yahoo Finance** (`yfinance`).  
 The app calculates **short-term and long-term Simple Moving Averages (SMAs)**, identifies **BUY / SELL / HOLD** signals based on crossovers, and displays an interactive candlestick chart.  
 
-**Live Demo:** _[Add your Streamlit Cloud or deployed link here]_  
+**Live Demo:** [https://livesma.jerinpaul.com](https://livesma.jerinpaul.com)
 **Portfolio Page:** [https://jerinpaul.com/projects](https://jerinpaul.com/projects)
 
 ---
