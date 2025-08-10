@@ -72,4 +72,4 @@ Strategy performance metrics (Sharpe ratio, win rate, etc.)
 
 
 ## 👨‍💻 Author
-Jerin Paul – Portfolio | LinkedIn
+Jerin Paul – [Portfolio](https://jerinpaul.com) | [LinkedIn](https://linkedin.com/in/jerinpaul03)
