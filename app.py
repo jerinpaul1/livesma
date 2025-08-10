@@ -17,6 +17,10 @@ ticker = st.sidebar.text_input("Enter Ticker Symbol", value="AAPL").upper()
 short_window = st.sidebar.number_input("Short SMA Window (minutes)", min_value=1, value=5)
 long_window = st.sidebar.number_input("Long SMA Window (minutes)", min_value=1, value=15)
 
+# Validate SMA windows
+if short_window >= long_window:
+    st.warning("Short window should be smaller than long window for crossovers.")
+
 # Fetch data function (can be cached)
 @st.cache_data(ttl=60) # Cache data for 60 seconds
 def fetch_data(ticker, short_window, long_window):
@@ -44,6 +48,9 @@ df = fetch_data(ticker, short_window, long_window)
 if df.empty or len(df) < max(short_window, long_window):
     st.warning("Not enough data to calculate SMAs or signals. Try a different ticker or wait for market data.")
 else:
+    # Market closed check
+    if df.index[-1].date() < pd.Timestamp.now().date():
+        st.warning("Market is closed. Showing last available data.")
     # check_signal logic (adapted for Streamlit)
     # We need at least two data points after dropping NaNs for signal calculation
     if len(df) < 2:
@@ -119,3 +126,7 @@ else:
             height=600
         )
         st.plotly_chart(fig, use_container_width=True)
+# Auto-refresh every 30 seconds
+refresh_rate = 30  # seconds
+time.sleep(refresh_rate)
+st.experimental_rerun()
