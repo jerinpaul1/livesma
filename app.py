@@ -8,7 +8,7 @@ import time # Keep time for sleep if needed for refresh logic
 # These will be replaced by Streamlit widgets
 
 st.set_page_config(page_title="Live SMA Dashboard", layout="wide")
-st.title("📈 Live Moving Average Crossover Dashboard")
+st.title("📈 Jerin's Live Moving Average Crossover Dashboard")
 
 # Sidebar inputs
 ticker = st.sidebar.text_input("Enter Ticker Symbol", value="AAPL").upper()
