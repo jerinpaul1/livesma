@@ -126,7 +126,3 @@ else:
             height=600
         )
         st.plotly_chart(fig, use_container_width=True)
-# Auto-refresh every 30 seconds
-refresh_rate = 30  # seconds
-time.sleep(refresh_rate)
-st.experimental_rerun()
