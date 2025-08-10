@@ -9,6 +9,8 @@ import time # Keep time for sleep if needed for refresh logic
 
 st.set_page_config(page_title="Live SMA Dashboard", layout="wide")
 st.title("📈 Jerin's Live Moving Average Crossover Dashboard")
+if st.button("📂 View All My Projects"):
+    st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
 
 # Sidebar inputs
 ticker = st.sidebar.text_input("Enter Ticker Symbol", value="AAPL").upper()
