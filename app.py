@@ -25,7 +25,7 @@ if short_window >= long_window:
 @st.cache_data(ttl=60) # Cache data for 60 seconds
 def fetch_data(ticker, short_window, long_window):
     # Adjusted period and interval for potentially longer lookback if needed, but sticking to 1d for 1m interval
-    df = yf.download(ticker, period="1d", interval="1m") # Use 1m interval for live
+    df = yf.download(ticker, period="5d", interval="5m") # Use 1m interval for live
     if df.empty:
         return pd.DataFrame() # Return empty if no data
 
@@ -108,7 +108,9 @@ else:
             high=df['High'],
             low=df['Low'],
             close=df['Close'],
-            name="Candlesticks"
+            name="Candlesticks",
+            increasing_line_color="green",
+            decreasing_line_color="red"
         ))
         if 'SMA_short' in df.columns:
             fig.add_trace(go.Scatter(
