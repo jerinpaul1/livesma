@@ -126,3 +126,4 @@ else:
             height=600
         )
         st.plotly_chart(fig, use_container_width=True)
+    st.dataframe(df)
