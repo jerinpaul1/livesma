@@ -100,52 +100,29 @@ else:
 
 
     # Plot candlestick chart with SMAs
-if not df.empty:
-    fig = go.Figure()
-
-    # Check if OHLC columns exist and have data
-    if all(col in df.columns for col in ["Open", "High", "Low", "Close"]):
-        # Candlestick trace
+    if not df.empty:
+        fig = go.Figure()
         fig.add_trace(go.Candlestick(
             x=df.index,
-            open=df["Open"],
-            high=df["High"],
-            low=df["Low"],
-            close=df["Close"],
-            name="Candlesticks",
-            increasing_line_color="green",
-            decreasing_line_color="red",
-            opacity=0.9
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'],
+            name="Candlesticks"
         ))
-    else:
-        # Fallback line chart if OHLC not available
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["Close"],
-            mode="lines",
-            name="Price",
-            line=dict(color="black", width=1)
-        ))
-
-    # Add SMA overlays
-    if "SMA_short" in df.columns:
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_short"],
-            mode="lines", name=f"SMA {short_window}",
-            line=dict(color="blue", width=2)
-        ))
-    if "SMA_long" in df.columns:
-        fig.add_trace(go.Scatter(
-            x=df.index, y=df["SMA_long"],
-            mode="lines", name=f"SMA {long_window}",
-            line=dict(color="orange", width=2)
-        ))
-
-    # Layout tweaks
-    fig.update_layout(
-        title=f"{ticker} Live Chart",
-        xaxis_rangeslider_visible=False,
-        height=600,
-        template="plotly_white"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+        if 'SMA_short' in df.columns:
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df['SMA_short'],
+                mode='lines', name=f"SMA {short_window}"
+            ))
+        if 'SMA_long' in df.columns:
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df['SMA_long'],
+                mode='lines', name=f"SMA {long_window}"
+            ))
+        fig.update_layout(
+            title=f"{ticker} Live Chart",
+            xaxis_rangeslider_visible=False,
+            height=600
+        )
+        st.plotly_chart(fig, use_container_width=True)
