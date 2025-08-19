@@ -29,34 +29,41 @@ def fetch_data(ticker, short_window, long_window):
     and calculates Simple Moving Averages.
     """
     try:
-        # Use 1m interval for live data, but get a longer period for more data points
         df = yf.download(ticker, period="1d", interval="1m")
     except Exception as e:
         st.error(f"Error fetching data for ticker {ticker}: {e}")
         return pd.DataFrame()
 
+    # If the dataframe is empty, return it immediately
     if df.empty:
-        return pd.DataFrame() # Return empty if no data
+        st.error(f"No data found for ticker '{ticker}'. Please check the symbol.")
+        return pd.DataFrame()
+
+    # --- NEW: VALIDATION STEP ---
+    # Ensure the necessary columns exist before proceeding
+    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    if not all(col in df.columns for col in required_cols):
+        st.error(f"Data for '{ticker}' is missing required columns. It might be an invalid ticker.")
+        return pd.DataFrame()
+    # --- END OF NEW CODE ---
 
     # Resample the data to ensure a continuous 1-minute time series.
-    # This fills in any missing minutes where no trades occurred, which is
-    # crucial for Plotly's candlestick chart to render correctly.
     df_resampled = df.resample('1T').agg({
         'Open': 'first',
         'High': 'max',
         'Low': 'min',
         'Close': 'last',
         'Volume': 'sum'
-    }).ffill().bfill() # Forward fill and then backward fill to handle leading NaNs
+    }).ffill().bfill()
 
     # Ensure windows are not larger than available data
     if len(df_resampled) > 0:
         short_window = min(short_window, len(df_resampled))
         long_window = min(long_window, len(df_resampled))
     else:
-        return pd.DataFrame() # No data to calculate SMAs
+        return pd.DataFrame()
 
-    # Calculate SMAs on the continuous dataset
+    # Calculate SMAs
     df_resampled['SMA_short'] = df_resampled['Close'].rolling(window=short_window).mean()
     df_resampled['SMA_long'] = df_resampled['Close'].rolling(window=long_window).mean()
 
