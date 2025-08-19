@@ -41,9 +41,14 @@ def fetch_data(ticker, short_window, long_window):
     df.dropna(inplace=True) # Drop rows with NaN created by rolling window
     return df
 
-# Get data
-df = fetch_data(ticker, short_window, long_window)
+# Create a placeholder for the dashboard content
+placeholder = st.empty()
 
+# Loop to auto-refresh
+while True:
+    with placeholder.container():
+        # Get data
+        df = fetch_data(ticker, short_window, long_window)
 # Check if enough data exists
 if df.empty or len(df) < max(short_window, long_window):
     st.warning("Not enough data to calculate SMAs or signals. Try a different ticker or wait for market data.")
@@ -118,3 +123,5 @@ else:
             height=600
         )
         st.plotly_chart(fig, use_container_width=True)
+# Wait for 60 seconds before the next refresh
+        time.sleep(60)
