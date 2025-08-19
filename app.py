@@ -104,7 +104,7 @@ if not df.empty:
     fig = go.Figure()
 
     # Check if OHLC columns exist and have data
-    if all(col in df.columns for col in ["Open", "High", "Low", "Close"]) and not df["Open"].isna().all():
+    if all(col in df.columns for col in ["Open", "High", "Low", "Close"]):
         # Candlestick trace
         fig.add_trace(go.Candlestick(
             x=df.index,
