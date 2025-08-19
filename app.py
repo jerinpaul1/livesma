@@ -24,22 +24,46 @@ if short_window >= long_window:
 # Fetch data function (can be cached)
 @st.cache_data(ttl=60) # Cache data for 60 seconds
 def fetch_data(ticker, short_window, long_window):
-    # Adjusted period and interval for potentially longer lookback if needed, but sticking to 1d for 1m interval
-    df = yf.download(ticker, period="1d", interval="1m") # Use 1m interval for live
+    """
+    Fetches live stock data, resamples it to a continuous 1-minute series,
+    and calculates Simple Moving Averages.
+    """
+    try:
+        # Use 1m interval for live data, but get a longer period for more data points
+        df = yf.download(ticker, period="1d", interval="1m")
+    except Exception as e:
+        st.error(f"Error fetching data for ticker {ticker}: {e}")
+        return pd.DataFrame()
+
     if df.empty:
         return pd.DataFrame() # Return empty if no data
 
+    # Resample the data to ensure a continuous 1-minute time series.
+    # This fills in any missing minutes where no trades occurred, which is
+    # crucial for Plotly's candlestick chart to render correctly.
+    df_resampled = df.resample('1T').agg({
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum'
+    }).ffill().bfill() # Forward fill and then backward fill to handle leading NaNs
+
     # Ensure windows are not larger than available data
-    if len(df) > 0:
-        short_window = min(short_window, len(df))
-        long_window = min(long_window, len(df))
+    if len(df_resampled) > 0:
+        short_window = min(short_window, len(df_resampled))
+        long_window = min(long_window, len(df_resampled))
     else:
         return pd.DataFrame() # No data to calculate SMAs
 
-    df['SMA_short'] = df['Close'].rolling(window=short_window).mean()
-    df['SMA_long'] = df['Close'].rolling(window=long_window).mean()
-    df.dropna(inplace=True) # Drop rows with NaN created by rolling window
-    return df
+    # Calculate SMAs on the continuous dataset
+    df_resampled['SMA_short'] = df_resampled['Close'].rolling(window=short_window).mean()
+    df_resampled['SMA_long'] = df_resampled['Close'].rolling(window=long_window).mean()
+
+    # Drop initial rows that don't have enough data for the rolling window
+    df_resampled.dropna(inplace=True)
+    
+    return df_resampled
 
 # Get data
 df = fetch_data(ticker, short_window, long_window)
@@ -51,19 +75,21 @@ else:
     # Market closed check
     if df.index[-1].date() < pd.Timestamp.now().date():
         st.warning("Market is closed. Showing last available data.")
+
     # check_signal logic (adapted for Streamlit)
     # We need at least two data points after dropping NaNs for signal calculation
     if len(df) < 2:
-         signal = "Waiting for enough data..."
+        signal = "Waiting for enough data..."
     else:
         latest = df.iloc[-1]
         prev = df.iloc[-2]
 
         # Robustly check for signal after ensuring valid data
         try:
-            if (latest['SMA_short'] > latest['SMA_long']).item() and (prev['SMA_short'] <= prev['SMA_long']).item():
+            # Removed .item() for cleaner, more robust comparison
+            if (latest['SMA_short'] > latest['SMA_long']) and (prev['SMA_short'] <= prev['SMA_long']):
                 signal = "BUY"
-            elif (latest['SMA_short'] < latest['SMA_long']).item() and (prev['SMA_short'] >= prev['SMA_long']).item():
+            elif (latest['SMA_short'] < latest['SMA_long']) and (prev['SMA_short'] >= prev['SMA_long']):
                 signal = "SELL"
             else:
                 signal = "HOLD"
@@ -71,33 +97,29 @@ else:
             st.error(f"Error calculating signal: {e}")
             signal = "Error"
 
-
     # Display metrics
     col1, col2 = st.columns(2)
     with col1:
-        # Ensure we handle cases where latest or prev might not exist if df is very small but passed the initial check
-        if not df.empty:
-             st.metric(label="Current Price", value=f"${df['Close'].iloc[-1].item():.2f}")
-             if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
-                st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1].item():.2f}")
-             else:
-                 st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
+        if not df.empty and 'Close' in df.columns:
+            st.metric(label="Current Price", value=f"${df['Close'].iloc[-1]:.2f}")
+            if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
+                st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1]:.2f}")
+            else:
+                st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
         else:
-             st.metric(label="Current Price", value="N/A")
-             st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
-
+            st.metric(label="Current Price", value="N/A")
+            st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
 
     with col2:
-         if not df.empty:
+        if not df.empty:
             if 'SMA_long' in df.columns and not pd.isna(df['SMA_long'].iloc[-1]):
-                st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1].item():.2f}")
+                st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1]:.2f}")
             else:
                 st.metric(label=f"Long SMA ({long_window}m)", value="N/A")
             st.metric(label="Signal", value=signal)
-         else:
+        else:
             st.metric(label=f"Long SMA ({long_window}m)", value="N/A")
             st.metric(label="Signal", value="N/A")
-
 
     # Plot candlestick chart with SMAs
     if not df.empty:
