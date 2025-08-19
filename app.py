@@ -24,53 +24,22 @@ if short_window >= long_window:
 # Fetch data function (can be cached)
 @st.cache_data(ttl=60) # Cache data for 60 seconds
 def fetch_data(ticker, short_window, long_window):
-    """
-    Fetches live stock data, resamples it to a continuous 1-minute series,
-    and calculates Simple Moving Averages.
-    """
-    try:
-        df = yf.download(ticker, period="1d", interval="1m")
-    except Exception as e:
-        st.error(f"Error fetching data for ticker {ticker}: {e}")
-        return pd.DataFrame()
-
-    # If the dataframe is empty, return it immediately
+    # Adjusted period and interval for potentially longer lookback if needed, but sticking to 1d for 1m interval
+    df = yf.download(ticker, period="1d", interval="1m") # Use 1m interval for live
     if df.empty:
-        st.error(f"No data found for ticker '{ticker}'. Please check the symbol.")
-        return pd.DataFrame()
-
-    # --- NEW: VALIDATION STEP ---
-    # Ensure the necessary columns exist before proceeding
-    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    if not all(col in df.columns for col in required_cols):
-        st.error(f"Data for '{ticker}' is missing required columns. It might be an invalid ticker.")
-        return pd.DataFrame()
-    # --- END OF NEW CODE ---
-
-    # Resample the data to ensure a continuous 1-minute time series.
-    df_resampled = df.resample('1T').agg({
-        'Open': 'first',
-        'High': 'max',
-        'Low': 'min',
-        'Close': 'last',
-        'Volume': 'sum'
-    }).ffill().bfill()
+        return pd.DataFrame() # Return empty if no data
 
     # Ensure windows are not larger than available data
-    if len(df_resampled) > 0:
-        short_window = min(short_window, len(df_resampled))
-        long_window = min(long_window, len(df_resampled))
+    if len(df) > 0:
+        short_window = min(short_window, len(df))
+        long_window = min(long_window, len(df))
     else:
-        return pd.DataFrame()
+        return pd.DataFrame() # No data to calculate SMAs
 
-    # Calculate SMAs
-    df_resampled['SMA_short'] = df_resampled['Close'].rolling(window=short_window).mean()
-    df_resampled['SMA_long'] = df_resampled['Close'].rolling(window=long_window).mean()
-
-    # Drop initial rows that don't have enough data for the rolling window
-    df_resampled.dropna(inplace=True)
-    
-    return df_resampled
+    df['SMA_short'] = df['Close'].rolling(window=short_window).mean()
+    df['SMA_long'] = df['Close'].rolling(window=long_window).mean()
+    df.dropna(inplace=True) # Drop rows with NaN created by rolling window
+    return df
 
 # Get data
 df = fetch_data(ticker, short_window, long_window)
@@ -82,21 +51,19 @@ else:
     # Market closed check
     if df.index[-1].date() < pd.Timestamp.now().date():
         st.warning("Market is closed. Showing last available data.")
-
     # check_signal logic (adapted for Streamlit)
     # We need at least two data points after dropping NaNs for signal calculation
     if len(df) < 2:
-        signal = "Waiting for enough data..."
+         signal = "Waiting for enough data..."
     else:
         latest = df.iloc[-1]
         prev = df.iloc[-2]
 
         # Robustly check for signal after ensuring valid data
         try:
-            # Removed .item() for cleaner, more robust comparison
-            if (latest['SMA_short'] > latest['SMA_long']) and (prev['SMA_short'] <= prev['SMA_long']):
+            if (latest['SMA_short'] > latest['SMA_long']).item() and (prev['SMA_short'] <= prev['SMA_long']).item():
                 signal = "BUY"
-            elif (latest['SMA_short'] < latest['SMA_long']) and (prev['SMA_short'] >= prev['SMA_long']):
+            elif (latest['SMA_short'] < latest['SMA_long']).item() and (prev['SMA_short'] >= prev['SMA_long']).item():
                 signal = "SELL"
             else:
                 signal = "HOLD"
@@ -104,41 +71,37 @@ else:
             st.error(f"Error calculating signal: {e}")
             signal = "Error"
 
+
     # Display metrics
     col1, col2 = st.columns(2)
     with col1:
-        if not df.empty and 'Close' in df.columns:
-            st.metric(label="Current Price", value=f"${df['Close'].iloc[-1]:.2f}")
-            if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
-                st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1]:.2f}")
-            else:
-                st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
+        # Ensure we handle cases where latest or prev might not exist if df is very small but passed the initial check
+        if not df.empty:
+             st.metric(label="Current Price", value=f"${df['Close'].iloc[-1].item():.2f}")
+             if 'SMA_short' in df.columns and not pd.isna(df['SMA_short'].iloc[-1]):
+                st.metric(label=f"Short SMA ({short_window}m)", value=f"${df['SMA_short'].iloc[-1].item():.2f}")
+             else:
+                 st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
         else:
-            st.metric(label="Current Price", value="N/A")
-            st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
+             st.metric(label="Current Price", value="N/A")
+             st.metric(label=f"Short SMA ({short_window}m)", value="N/A")
+
 
     with col2:
-        if not df.empty:
+         if not df.empty:
             if 'SMA_long' in df.columns and not pd.isna(df['SMA_long'].iloc[-1]):
-                st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1]:.2f}")
+                st.metric(label=f"Long SMA ({long_window}m)", value=f"${df['SMA_long'].iloc[-1].item():.2f}")
             else:
                 st.metric(label=f"Long SMA ({long_window}m)", value="N/A")
             st.metric(label="Signal", value=signal)
-        else:
+         else:
             st.metric(label=f"Long SMA ({long_window}m)", value="N/A")
             st.metric(label="Signal", value="N/A")
 
-    # Plot candlestick chart with SMAs
+
+    # Plot chart with SMAs
     if not df.empty:
         fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=df.index,
-            open=df['Open'],
-            high=df['High'],
-            low=df['Low'],
-            close=df['Close'],
-            name="Candlesticks"
-        ))
         if 'SMA_short' in df.columns:
             fig.add_trace(go.Scatter(
                 x=df.index, y=df['SMA_short'],
