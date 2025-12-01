@@ -12,7 +12,7 @@ st.title("📊 Jerin's Financial Dashboard")
 if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
 
-st.markdown("""
+st.text("""
 #    Welcome! Choose an app from below:
 #
 #    - **Live SMA Dashboard**: View live moving averages and trading signals.
@@ -186,7 +186,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             w = st.sidebar.number_input(f"Weight for {ticker}", value=100/len(tickers), min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
 
-    n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=100, step=1)
+    n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations",value="The higher the longer it takes!" min_value=1, value=10, step=1)
     days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
 
     if st.sidebar.button("Run Simulation"):
@@ -221,7 +221,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             fig = go.Figure()
             for i, ticker in enumerate(tickers):
                 for sim in range(min(10, n_simulations)):
-                    fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), name=f'{ticker} path {sim+1}', opacity=0.3))
+                    fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), opacity=0.3))
                 fig.add_trace(go.Scatter(x=future_dates, y=prices[:, :, i].mean(axis=1), mode='lines', name=f'{ticker} mean', line=dict(width=2)))
                 fig.add_trace(go.Scatter(x=past_dates, y=data['Close'][tickers[i]], mode='lines', name=f'{ticker} historical', line=dict(dash='dot', width=2)))
 
