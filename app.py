@@ -241,7 +241,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
                 line_color='lightgrey',
                 name='5th-95th percentile'
             ))
-            fig.add_trace(go.Scatter(x=past_dates, y=portfolio_history, mode='lines', name='Historical Portfolio', line=dict(color='black', width=2)))
+            fig.add_trace(go.Scatter(x=past_dates, y=portfolio_history, mode='lines', name='Historical Portfolio', line=dict(color='white', width=2)))
             fig.add_trace(go.Scatter(x=future_dates, y=portfolio_prices.mean(axis=1), mode='lines', name='Portfolio Mean', line=dict(color='red', width=2)))
             fig.update_layout(title="Monte Carlo Simulation", xaxis_title="Date", yaxis_title="Price ($)")
             st.plotly_chart(fig, use_container_width=True)
