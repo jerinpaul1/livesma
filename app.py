@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 
 # ----------------------------- PAGE SETUP -----------------------------
 st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
@@ -166,137 +165,82 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             return not dataa.empty
         except Exception:
             return False
-    
+
     # --- Sidebar Inputs ---
     st.sidebar.header("Simulation Parameters")
-    
-    # Number of tickers
     num_tickers = st.sidebar.number_input("Number of stock ticker symbols", min_value=1, step=1)
     
-    # Tickers
     tickers = []
     for i in range(num_tickers):
-        while True:
-            ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
-            if ticker == "":
-                break  # skip if empty
-            if ticker in tickers:
-                st.sidebar.warning(f"{ticker} ❌ Already entered. Try again.")
-                break
-            if validate_ticker(ticker):
-                st.sidebar.success(f"{ticker} ✅ Valid ticker")
-                tickers.append(ticker)
-                break
-            else:
-                st.sidebar.error(f"{ticker} ❌ Invalid or not found on Yahoo Finance. Try again.")
-                break
-            
-    # Weights
+        ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
+        if ticker:
+            tickers.append(ticker)
+    
     weights = []
     if len(tickers) == 1:
         weights = [1.0]
     else:
         st.sidebar.subheader("Portfolio Weights (%)")
-        total_weight = 0
         for ticker in tickers:
             w = st.sidebar.number_input(f"Weight for {ticker}", min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
-            total_weight += w
-        if abs(sum(weights) - 1.0) > 1e-5:
-            st.sidebar.warning("Weights do not sum to 100%. Please adjust.")
     
-    # Number of simulations
     n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=100, step=1)
-    
-    # Number of days to simulate
     days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
     
     if st.sidebar.button("Run Simulation"):
         if len(tickers) == 0:
-            st.error("Please enter at least one valid ticker.")
+            st.error("Please enter at least one ticker.")
         else:
-            # --- Download data ---
+            # Download data
             data = yf.download(tickers, period="1y", auto_adjust=False)
-            st.success("Historical data downloaded ✅")
-    
-            # Daily returns
             returns = data["Close"].pct_change().dropna()
             mu = returns.mean()
             sigma = returns.std()
-    
-            # Initial price
             initial_price = data["Close"].iloc[-1].values
             n_stocks = len(tickers)
             prices = np.zeros((days, n_simulations, n_stocks))
             prices[0] = initial_price
-            dt = 1
-    
-            # --- Monte Carlo simulation ---
             cov_matrix = returns.cov().values
+    
+            # Monte Carlo simulation
             for sim in range(n_simulations):
                 for t in range(1, days):
                     z = np.random.multivariate_normal(np.zeros(n_stocks), cov_matrix)
-                    prices[t, sim, :] = prices[t - 1, sim, :] * np.exp((mu - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * z)
+                    prices[t, sim, :] = prices[t - 1, sim, :] * np.exp((mu - 0.5 * sigma ** 2) + sigma * z)
     
-            # Portfolio prices
             weights = np.array(weights)
             portfolio_prices = np.sum(prices * weights, axis=2)
             portfolio_history = (data["Close"] * weights).sum(axis=1)
     
-            # Date axes
             past_dates = data.index
             future_dates = pd.bdate_range(start=past_dates[-1] + pd.Timedelta(days=1), periods=days)
     
-            # --- Plotting ---
-            st.subheader("Monte Carlo Simulation Plot")
-            fig, ax = plt.subplots(figsize=(12, 6))
+            # --- Plotly Interactive Plot ---
+            fig = go.Figure()
             for i, ticker in enumerate(tickers):
-                ax.plot(future_dates, prices[:, :10, i], alpha=0.3)
-                ax.plot(future_dates, prices[:, :, i].mean(axis=1), label=f'{ticker} mean')
-                ax.plot(past_dates, data['Close'][tickers[i]], label=f'{tickers[i]} historical')
+                for sim in range(min(10, n_simulations)):
+                    fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), name=f'{ticker} path {sim+1}', opacity=0.3))
+                fig.add_trace(go.Scatter(x=future_dates, y=prices[:, :, i].mean(axis=1), mode='lines', name=f'{ticker} mean', line=dict(width=2)))
+                fig.add_trace(go.Scatter(x=past_dates, y=data['Close'][tickers[i]], mode='lines', name=f'{ticker} historical', line=dict(dash='dot', width=2)))
     
-            ax.fill_between(future_dates,
-                            np.percentile(portfolio_prices, 5, axis=1),
-                            np.percentile(portfolio_prices, 95, axis=1),
-                            color='grey', alpha=0.2, label='5th-95th percentile')
-    
-            ax.plot(past_dates, portfolio_history, color='black', label="Historical Portfolio Value", linewidth=2)
-            ax.plot(future_dates, portfolio_prices.mean(axis=1), lw=2, color='red', label='Portfolio mean')
-            ax.set_title(f"Monte Carlo Simulation ({n_simulations} Paths)")
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Price ($)")
-            ax.legend()
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
-    
-            # --- Summary ---
-            st.subheader("Simulation Summary")
-            for i, ticker in enumerate(tickers):
-                current_price = data["Close"][ticker].iloc[-1]
-                stock_final = prices[-1, :, i]
-                st.markdown(f"**{ticker} Summary:**")
-                st.write(f"Current price: ${current_price:.2f}")
-                st.write(f"Mean final price: ${np.mean(stock_final):.2f}")
-                st.write(f"5th percentile: ${np.percentile(stock_final, 5):.2f}")
-                st.write(f"95th percentile: ${np.percentile(stock_final, 95):.2f}")
-    
-            final_prices = portfolio_prices[-1, :]
-            portfolio_current = np.sum(data["Close"].iloc[-1].values * weights)
-            st.markdown("**Portfolio Summary:**")
-            st.write(f"Current portfolio value: ${portfolio_current:.2f}")
-            st.write(f"Mean final value: ${np.mean(final_prices):.2f}")
-            st.write(f"Median final value: ${np.median(final_prices):.2f}")
-            st.write(f"5th percentile: ${np.percentile(final_prices, 5):.2f}")
-            st.write(f"95th percentile: ${np.percentile(final_prices, 95):.2f}")
-            annual_return = (np.mean(final_prices) / portfolio_current - 1)
-            annual_volatility = np.std(final_prices / portfolio_current)
-            st.write(f"Expected Annual Return: {annual_return*100:.2f}%")
-            st.write(f"Simulated Annual Volatility: {annual_volatility*100:.2f}%")
-    
-            # Histogram
-            st.subheader("Distribution of Simulated Final Portfolio Values")
-            fig2, ax2 = plt.subplots(figsize=(8, 4))
-            ax2.hist(final_prices, bins=30, color="skyblue", edgecolor="black")
-            ax2.set_xlabel("Portfolio Value ($)")
-            ax2.set_ylabel("Frequency")
-            st.pyplot(fig2)
+            fig.add_trace(go.Scatter(
+                x=future_dates,
+                y=np.percentile(portfolio_prices, 5, axis=1),
+                fill=None,
+                mode='lines',
+                line_color='lightgrey',
+                showlegend=False
+            ))
+            fig.add_trace(go.Scatter(
+                x=future_dates,
+                y=np.percentile(portfolio_prices, 95, axis=1),
+                fill='tonexty',
+                mode='lines',
+                line_color='lightgrey',
+                name='5th-95th percentile'
+            ))
+            fig.add_trace(go.Scatter(x=past_dates, y=portfolio_history, mode='lines', name='Historical Portfolio', line=dict(color='black', width=2)))
+            fig.add_trace(go.Scatter(x=future_dates, y=portfolio_prices.mean(axis=1), mode='lines', name='Portfolio Mean', line=dict(color='red', width=2)))
+            fig.update_layout(title="Monte Carlo Simulation", xaxis_title="Date", yaxis_title="Price ($)")
+            st.plotly_chart(fig, use_container_width=True)
