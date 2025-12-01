@@ -9,6 +9,8 @@ st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
 
 # ----------------------------- FRONT PAGE -----------------------------
 st.title("📊 Jerin's Financial Dashboard")
+if st.button("📂 View All My Projects"):
+        st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
 app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
 
 # ----------------------------- HOME -----------------------------
@@ -34,8 +36,6 @@ if app_choice == "Home":
         </div>
         """, unsafe_allow_html=True
     )
-    if st.button("📂 View All My Projects"):
-        st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
 
 
 # ----------------------------- LIVE SMA DASHBOARD -----------------------------
