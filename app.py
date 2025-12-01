@@ -11,7 +11,7 @@ st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
 st.title("📊 Jerin's Financial Dashboard")
 if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
-st.write("""
+st.markdown("""
 #    Welcome! Choose an app from below:
 #
 #    - **Live SMA Dashboard**: View live moving averages and trading signals.
@@ -169,13 +169,13 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
     # --- Sidebar Inputs ---
     st.sidebar.header("Simulation Parameters")
     num_tickers = st.sidebar.number_input("Number of stock ticker symbols", min_value=1, step=1)
-    
+
     tickers = []
     for i in range(num_tickers):
         ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
         if ticker:
             tickers.append(ticker)
-    
+
     weights = []
     if len(tickers) == 1:
         weights = [1.0]
@@ -184,10 +184,10 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
         for ticker in tickers:
             w = st.sidebar.number_input(f"Weight for {ticker}", min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
-    
+
     n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=100, step=1)
     days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
-    
+
     if st.sidebar.button("Run Simulation"):
         if len(tickers) == 0:
             st.error("Please enter at least one ticker.")
@@ -202,20 +202,20 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             prices = np.zeros((days, n_simulations, n_stocks))
             prices[0] = initial_price
             cov_matrix = returns.cov().values
-    
+
             # Monte Carlo simulation
             for sim in range(n_simulations):
                 for t in range(1, days):
                     z = np.random.multivariate_normal(np.zeros(n_stocks), cov_matrix)
                     prices[t, sim, :] = prices[t - 1, sim, :] * np.exp((mu - 0.5 * sigma ** 2) + sigma * z)
-    
+
             weights = np.array(weights)
             portfolio_prices = np.sum(prices * weights, axis=2)
             portfolio_history = (data["Close"] * weights).sum(axis=1)
-    
+
             past_dates = data.index
             future_dates = pd.bdate_range(start=past_dates[-1] + pd.Timedelta(days=1), periods=days)
-    
+
             # --- Plotly Interactive Plot ---
             fig = go.Figure()
             for i, ticker in enumerate(tickers):
@@ -223,7 +223,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
                     fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), name=f'{ticker} path {sim+1}', opacity=0.3))
                 fig.add_trace(go.Scatter(x=future_dates, y=prices[:, :, i].mean(axis=1), mode='lines', name=f'{ticker} mean', line=dict(width=2)))
                 fig.add_trace(go.Scatter(x=past_dates, y=data['Close'][tickers[i]], mode='lines', name=f'{ticker} historical', line=dict(dash='dot', width=2)))
-    
+
             fig.add_trace(go.Scatter(
                 x=future_dates,
                 y=np.percentile(portfolio_prices, 5, axis=1),
