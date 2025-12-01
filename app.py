@@ -12,15 +12,30 @@ st.title("📊 Jerin's Financial Dashboard")
 app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
 
 # ----------------------------- HOME -----------------------------
+"""
 if app_choice == "Home":
-    st.write("""
+    st.write(""""""
     Welcome! Choose an app from above:
 
     - **Live SMA Dashboard**: View live moving averages and trading signals.
     - **Multi-Asset Monte Carlo Simulator**: Run portfolio simulations using Monte Carlo.
-    """)
+    """""")
     if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
+"""
+if app_choice == "Home":
+    st.markdown(
+        """
+        <div style="text-align: center;">
+            <h1>Welcome! Choose an app from above:</h1>
+            <p>
+            - <b>Live SMA Dashboard</b>: View live moving averages and trading signals.<br>
+            - <b>Multi-Asset Monte Carlo Simulator</b>: Run portfolio simulations using Monte Carlo.
+            </p>
+            <button onclick="window.location.href='https://jerinpaul.com/projects'">📂 View All My Projects</button>
+        </div>
+        """, unsafe_allow_html=True
+    )
 
 # ----------------------------- LIVE SMA DASHBOARD -----------------------------
 elif app_choice == "Live SMA Dashboard":
