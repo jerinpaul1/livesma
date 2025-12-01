@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # ----------------------------- PAGE SETUP -----------------------------
 st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
@@ -156,103 +157,146 @@ elif app_choice == "Live SMA Dashboard":
 elif app_choice == "Multi-Asset Monte Carlo Simulator":
     st.title("📈 Multi-Asset Monte Carlo Simulator")
 
-    # Sidebar for inputs
-    st.sidebar.subheader("Simulation Settings")
-    num_tickers = st.sidebar.number_input("Number of Tickers", min_value=1, max_value=5, value=2, step=1)
+    # Validate ticker
+    @st.cache_data
+    def validate_ticker(ticker):
+        """Return True if ticker exists on Yahoo Finance."""
+        try:
+            dataa = yf.Ticker(ticker).history(period="1d")
+            return not dataa.empty
+        except Exception:
+            return False
+    
+    # --- Sidebar Inputs ---
+    st.sidebar.header("Simulation Parameters")
+    
+    # Number of tickers
+    num_tickers = st.sidebar.number_input("Number of stock ticker symbols", min_value=1, step=1)
+    
+    # Tickers
     tickers = []
+    for i in range(num_tickers):
+        while True:
+            ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
+            if ticker == "":
+                break  # skip if empty
+            if ticker in tickers:
+                st.sidebar.warning(f"{ticker} ❌ Already entered. Try again.")
+                break
+            if validate_ticker(ticker):
+                st.sidebar.success(f"{ticker} ✅ Valid ticker")
+                tickers.append(ticker)
+                break
+            else:
+                st.sidebar.error(f"{ticker} ❌ Invalid or not found on Yahoo Finance. Try again.")
+                break
+            
+    # Weights
     weights = []
-
-    # Input tickers and weights dynamically
-    for i in range(num_tickers):
-        tick = st.sidebar.text_input(f"Ticker {i+1}", value="AAPL").upper()
-        tickers.append(tick)
-
-    st.sidebar.markdown("### Portfolio Weights (%)")
-    for i in range(num_tickers):
-        w = st.sidebar.number_input(f"Weight {tickers[i]}", min_value=0.0, max_value=100.0, value=round(100/num_tickers, 2))
-        weights.append(w / 100)
-
-    if sum(weights) != 1:
-        st.sidebar.warning("Weights should sum to 100%.")
-
-    n_simulations = st.sidebar.number_input("Number of Simulations", min_value=10, max_value=1000, value=100, step=10)
-    days = st.sidebar.number_input("Simulation Days", min_value=30, max_value=1000, value=252, step=10)
-
-    if st.sidebar.button("Run Simulation") and sum(weights) == 1:
-        with st.spinner("Fetching data and running Monte Carlo simulations..."):
-            # Fetch historical data
+    if len(tickers) == 1:
+        weights = [1.0]
+    else:
+        st.sidebar.subheader("Portfolio Weights (%)")
+        total_weight = 0
+        for ticker in tickers:
+            w = st.sidebar.number_input(f"Weight for {ticker}", min_value=0.0, max_value=100.0, step=1.0)
+            weights.append(w / 100)
+            total_weight += w
+        if abs(sum(weights) - 1.0) > 1e-5:
+            st.sidebar.warning("Weights do not sum to 100%. Please adjust.")
+    
+    # Number of simulations
+    n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=100, step=1)
+    
+    # Number of days to simulate
+    days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
+    
+    if st.sidebar.button("Run Simulation"):
+        if len(tickers) == 0:
+            st.error("Please enter at least one valid ticker.")
+        else:
+            # --- Download data ---
             data = yf.download(tickers, period="1y", auto_adjust=False)
-            returns = data['Close'].pct_change().dropna()
+            st.success("Historical data downloaded ✅")
+    
+            # Daily returns
+            returns = data["Close"].pct_change().dropna()
             mu = returns.mean()
             sigma = returns.std()
-            initial_price = data['Close'].iloc[-1].values
+    
+            # Initial price
+            initial_price = data["Close"].iloc[-1].values
             n_stocks = len(tickers)
             prices = np.zeros((days, n_simulations, n_stocks))
             prices[0] = initial_price
             dt = 1
+    
+            # --- Monte Carlo simulation ---
             cov_matrix = returns.cov().values
-
-            # Monte Carlo simulation
             for sim in range(n_simulations):
                 for t in range(1, days):
                     z = np.random.multivariate_normal(np.zeros(n_stocks), cov_matrix)
-                    prices[t, sim, :] = prices[t-1, sim, :] * np.exp((mu - 0.5*sigma**2)*dt + sigma*np.sqrt(dt)*z)
-
-            weights_arr = np.array(weights)
-            portfolio_prices = np.sum(prices * weights_arr, axis=2)
-
-            # ---------------- PLOT PORTFOLIO ----------------
-            future_dates = pd.bdate_range(start=data.index[-1] + pd.Timedelta(days=1), periods=days)
-            fig = go.Figure()
-
-            # First 10 simulations
-            for i in range(min(10, n_simulations)):
-                fig.add_trace(go.Scatter(
-                    x=future_dates,
-                    y=portfolio_prices[:, i],
-                    mode='lines',
-                    line=dict(color='lightgrey'),
-                    showlegend=False
-                ))
-
-            # Mean portfolio
-            fig.add_trace(go.Scatter(
-                x=future_dates,
-                y=portfolio_prices.mean(axis=1),
-                mode='lines',
-                line=dict(color='red', width=2),
-                name='Portfolio Mean'
-            ))
-
-            # 5th-95th percentile shading
-            fig.add_trace(go.Scatter(
-                x=future_dates.tolist() + future_dates[::-1].tolist(),
-                y=np.percentile(portfolio_prices, 95, axis=1).tolist() + np.percentile(portfolio_prices, 5, axis=1)[::-1].tolist(),
-                fill='toself',
-                fillcolor='rgba(128,128,128,0.2)',
-                line=dict(color='rgba(255,255,255,0)'),
-                showlegend=True,
-                name='5th-95th percentile'
-            ))
-
-            fig.update_layout(
-                title="Monte Carlo Portfolio Simulation",
-                xaxis_title="Date",
-                yaxis_title="Portfolio Value",
-                height=600
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-            # ---------------- SUMMARY ----------------
-            final_prices = portfolio_prices[-1, :]
-            portfolio_current = np.sum(data["Close"].iloc[-1].values * weights_arr)
+                    prices[t, sim, :] = prices[t - 1, sim, :] * np.exp((mu - 0.5 * sigma ** 2) * dt + sigma * np.sqrt(dt) * z)
+    
+            # Portfolio prices
+            weights = np.array(weights)
+            portfolio_prices = np.sum(prices * weights, axis=2)
+            portfolio_history = (data["Close"] * weights).sum(axis=1)
+    
+            # Date axes
+            past_dates = data.index
+            future_dates = pd.bdate_range(start=past_dates[-1] + pd.Timedelta(days=1), periods=days)
+    
+            # --- Plotting ---
+            st.subheader("Monte Carlo Simulation Plot")
+            fig, ax = plt.subplots(figsize=(12, 6))
+            for i, ticker in enumerate(tickers):
+                ax.plot(future_dates, prices[:, :10, i], alpha=0.3)
+                ax.plot(future_dates, prices[:, :, i].mean(axis=1), label=f'{ticker} mean')
+                ax.plot(past_dates, data['Close'][tickers[i]], label=f'{tickers[i]} historical')
+    
+            ax.fill_between(future_dates,
+                            np.percentile(portfolio_prices, 5, axis=1),
+                            np.percentile(portfolio_prices, 95, axis=1),
+                            color='grey', alpha=0.2, label='5th-95th percentile')
+    
+            ax.plot(past_dates, portfolio_history, color='black', label="Historical Portfolio Value", linewidth=2)
+            ax.plot(future_dates, portfolio_prices.mean(axis=1), lw=2, color='red', label='Portfolio mean')
+            ax.set_title(f"Monte Carlo Simulation ({n_simulations} Paths)")
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Price ($)")
+            ax.legend()
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+    
+            # --- Summary ---
             st.subheader("Simulation Summary")
-            st.write(f"Current Portfolio Value: ${portfolio_current:.2f}")
-            st.write(f"Mean Final Value: ${np.mean(final_prices):.2f}")
-            st.write(f"Median Final Value: ${np.median(final_prices):.2f}")
-            st.write(f"5th Percentile: ${np.percentile(final_prices, 5):.2f}")
-            st.write(f"95th Percentile: ${np.percentile(final_prices, 95):.2f}")
+            for i, ticker in enumerate(tickers):
+                current_price = data["Close"][ticker].iloc[-1]
+                stock_final = prices[-1, :, i]
+                st.markdown(f"**{ticker} Summary:**")
+                st.write(f"Current price: ${current_price:.2f}")
+                st.write(f"Mean final price: ${np.mean(stock_final):.2f}")
+                st.write(f"5th percentile: ${np.percentile(stock_final, 5):.2f}")
+                st.write(f"95th percentile: ${np.percentile(stock_final, 95):.2f}")
+    
+            final_prices = portfolio_prices[-1, :]
+            portfolio_current = np.sum(data["Close"].iloc[-1].values * weights)
+            st.markdown("**Portfolio Summary:**")
+            st.write(f"Current portfolio value: ${portfolio_current:.2f}")
+            st.write(f"Mean final value: ${np.mean(final_prices):.2f}")
+            st.write(f"Median final value: ${np.median(final_prices):.2f}")
+            st.write(f"5th percentile: ${np.percentile(final_prices, 5):.2f}")
+            st.write(f"95th percentile: ${np.percentile(final_prices, 95):.2f}")
             annual_return = (np.mean(final_prices) / portfolio_current - 1)
             annual_volatility = np.std(final_prices / portfolio_current)
             st.write(f"Expected Annual Return: {annual_return*100:.2f}%")
             st.write(f"Simulated Annual Volatility: {annual_volatility*100:.2f}%")
+    
+            # Histogram
+            st.subheader("Distribution of Simulated Final Portfolio Values")
+            fig2, ax2 = plt.subplots(figsize=(8, 4))
+            ax2.hist(final_prices, bins=30, color="skyblue", edgecolor="black")
+            ax2.set_xlabel("Portfolio Value ($)")
+            ax2.set_ylabel("Frequency")
+            st.pyplot(fig2)
