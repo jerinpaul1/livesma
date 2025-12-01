@@ -186,7 +186,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             w = st.sidebar.number_input(f"Weight for {ticker}", value=100/len(tickers), min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
 
-    n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations",value="The higher the longer it takes!", min_value=1, value=10, step=1)
+    n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=10, step=1)
     days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
 
     if st.sidebar.button("Run Simulation"):
