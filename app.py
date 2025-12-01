@@ -221,7 +221,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             fig = go.Figure()
             for i, ticker in enumerate(tickers):
                 for sim in range(min(10, n_simulations)):
-                    fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), opacity=0.3))
+                    fig.add_trace(go.Scatter(x=future_dates, y=prices[:, sim, i], mode='lines', line=dict(width=1), opacity=0.3, showlegend=False))
                 fig.add_trace(go.Scatter(x=future_dates, y=prices[:, :, i].mean(axis=1), mode='lines', name=f'{ticker} mean', line=dict(width=2)))
                 fig.add_trace(go.Scatter(x=past_dates, y=data['Close'][tickers[i]], mode='lines', name=f'{ticker} historical', line=dict(dash='dot', width=2)))
 
