@@ -11,6 +11,7 @@ st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
 st.title("📊 Jerin's Financial Dashboard")
 if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
+
 st.markdown("""
 #    Welcome! Choose an app from below:
 #
@@ -182,7 +183,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
     else:
         st.sidebar.subheader("Portfolio Weights (%)")
         for ticker in tickers:
-            w = st.sidebar.number_input(f"Weight for {ticker}", min_value=0.0, max_value=100.0, step=1.0)
+            w = st.sidebar.number_input(f"Weight for {ticker}", value=100/len(tickers), min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
 
     n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=100, step=1)
