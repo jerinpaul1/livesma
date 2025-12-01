@@ -178,7 +178,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             tickers.append(ticker)
 
     weights = []
-    if len(tickers) == 1:
+    if len(tickers) <= 1:
         weights = [1.0]
     else:
         st.sidebar.subheader("Portfolio Weights (%)")
