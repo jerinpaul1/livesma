@@ -11,6 +11,12 @@ st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
 st.title("📊 Jerin's Financial Dashboard")
 if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
+st.write("""
+#    Welcome! Choose an app from below:
+#
+#    - **Live SMA Dashboard**: View live moving averages and trading signals.
+#    - **Multi-Asset Monte Carlo Simulator**: Run portfolio simulations using Monte Carlo.
+#    """)
 app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
 
 # ----------------------------- HOME -----------------------------
@@ -28,13 +34,10 @@ app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Ass
 if app_choice == "Home":
     st.markdown(
         """
-        <div style="text-align: center;">
-            <h1>Welcome! Choose an app from above:</h1>
-            <p>
-            - <b>Live SMA Dashboard</b>: View live moving averages and trading signals.<br>
-            - <b>Multi-Asset Monte Carlo Simulator</b>: Run portfolio simulations using Monte Carlo.
-        </div>
-        """, unsafe_allow_html=True
+        Here you can find some of the programs i've worked on while at university.
+        I typically make them using Google Colab and then try to translate it into streamlit compatible pages to put here.
+        If you would like to see more or even just contact me, head on over to my website using the view projects button!
+        """
     )
 
 
