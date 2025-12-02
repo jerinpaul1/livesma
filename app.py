@@ -277,19 +277,17 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
             st.subheader("📁 Portfolio Summary")
 
             if len(tickers) > 1:
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Current Portfolio Value", f"${portfolio_current:.2f}")
                 col2.metric("Mean Final Value", f"${np.mean(final_prices):.2f}")
-                col3.metric("Median Final Value", f"${np.median(final_prices):.2f}")
-
-                col4, col5 = st.columns(2)
-                col4.metric("5th Percentile", f"${np.percentile(final_prices, 5):.2f}")
-                col5.metric("95th Percentile", f"${np.percentile(final_prices, 95):.2f}")
-
+                col3.metric("5th Percentile", f"${np.percentile(final_prices, 5):.2f}")
+                col4.metric("95th Percentile", f"${np.percentile(final_prices, 95):.2f}")
+        
             # Annualized metrics
             annual_return = (np.mean(final_prices) / portfolio_current - 1)
             annual_volatility = np.std(final_prices / portfolio_current)
 
-            colA, colB = st.columns(2)
+            colA, colB,colC = st.columns(3)
             colA.metric("Expected Annual Return", f"{annual_return*100:.2f}%")
             colB.metric("Simulated Annual Volatility", f"{annual_volatility*100:.2f}%")
+            colC.metric("Median Final Value", f"${np.median(final_prices):.2f}")
