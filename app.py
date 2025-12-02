@@ -172,9 +172,15 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
 
     tickers = []
     for i in range(num_tickers):
-        ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
-        if ticker:
-            tickers.append(ticker)
+        tick = False
+        while tick == False:
+            ticker = st.sidebar.text_input(f"Ticker {i+1}", "").upper()
+            if ticker in tickers:
+                st.warning("Ticker already used please enter another one!")
+            else:
+                tick = True
+                if ticker:
+                    tickers.append(ticker)
 
     weights = []
     if len(tickers) <= 1:
@@ -192,6 +198,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
         if len(tickers) == 0:
             st.error("Please enter at least one ticker.")
         else:
+            weights = np.array(weights)
             if not np.isclose(weights.sum(), 1.0):
                 st.error(f"❌ Weights add up to {weights.sum():.4f}. They must equal 1.0.")
                 st.stop()
@@ -212,7 +219,6 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
                     z = np.random.multivariate_normal(np.zeros(n_stocks), cov_matrix)
                     prices[t, sim, :] = prices[t - 1, sim, :] * np.exp((mu - 0.5 * sigma ** 2) + sigma * z)
 
-            weights = np.array(weights)
             portfolio_prices = np.sum(prices * weights, axis=2)
             portfolio_history = (data["Close"] * weights).sum(axis=1)
 
