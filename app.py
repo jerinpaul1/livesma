@@ -13,11 +13,10 @@ if st.button("📂 View All My Projects"):
         st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
 
 st.text("""
-#    Welcome! Choose an app from below:
-#
-#    - **Live SMA Dashboard**: View live moving averages and trading signals.
-#    - **Multi-Asset Monte Carlo Simulator**: Run portfolio simulations using Monte Carlo.
-#    """)
+        Welcome! Choose an app from below:
+        - Live SMA Dashboard: View live moving averages and trading signals.
+        - Multi-Asset Monte Carlo Simulator: Run portfolio simulations using Monte Carlo.
+        """)
 app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
 
 # ----------------------------- HOME -----------------------------
@@ -185,7 +184,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
         for ticker in tickers:
             w = st.sidebar.number_input(f"Weight for {ticker}", value=100/len(tickers), min_value=0.0, max_value=100.0, step=1.0)
             weights.append(w / 100)
-
+    
     n_simulations = st.sidebar.number_input("Number of Monte Carlo simulations", min_value=1, value=10, step=1)
     days = st.sidebar.number_input("Number of trading days to simulate", min_value=1, value=252, step=1)
 
@@ -193,6 +192,9 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
         if len(tickers) == 0:
             st.error("Please enter at least one ticker.")
         else:
+            if not np.isclose(weights.sum(), 1.0):
+                st.error(f"❌ Weights add up to {weights.sum():.4f}. They must equal 1.0.")
+                st.stop()
             # Download data
             data = yf.download(tickers, period="1y", auto_adjust=False)
             returns = data["Close"].pct_change().dropna()
@@ -241,7 +243,47 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
                 line_color='lightgrey',
                 name='5th-95th percentile'
             ))
-            fig.add_trace(go.Scatter(x=past_dates, y=portfolio_history, mode='lines', name='Historical Portfolio', line=dict(color='white', width=2)))
+            fig.add_trace(go.Scatter(x=past_dates, y=portfolio_history, mode='lines', name='Historical Portfolio', line=dict(color='green', width=2)))
             fig.add_trace(go.Scatter(x=future_dates, y=portfolio_prices.mean(axis=1), mode='lines', name='Portfolio Mean', line=dict(color='red', width=2)))
             fig.update_layout(title="Monte Carlo Simulation", xaxis_title="Date", yaxis_title="Price ($)")
             st.plotly_chart(fig, use_container_width=True)
+            
+            # ---- SUMMARY SECTION ----
+            st.subheader("📊 Simulation Summary")
+
+            # Individual Ticker Summaries
+            for i, ticker in enumerate(tickers):
+                current_price = data["Close"][ticker].iloc[-1]
+                stock_final = prices[-1, :, i]
+
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric(f"{ticker} — Current Price", f"${current_price:.2f}")
+                col2.metric(f"{ticker} — Mean Final Price", f"${np.mean(stock_final):.2f}")
+                col3.metric(f"{ticker} — 5th %ile", f"${np.percentile(stock_final, 5):.2f}")
+                col4.metric(f"{ticker} — 95th %ile", f"${np.percentile(stock_final, 95):.2f}")
+
+                st.write("---")
+
+            # Portfolio Summary
+            final_prices = portfolio_prices[-1, :]
+            portfolio_current = np.sum(data["Close"].iloc[-1].values * np.array(weights))
+
+            st.subheader("📁 Portfolio Summary")
+
+            if len(tickers) > 1:
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Current Portfolio Value", f"${portfolio_current:.2f}")
+                col2.metric("Mean Final Value", f"${np.mean(final_prices):.2f}")
+                col3.metric("Median Final Value", f"${np.median(final_prices):.2f}")
+
+                col4, col5 = st.columns(2)
+                col4.metric("5th Percentile", f"${np.percentile(final_prices, 5):.2f}")
+                col5.metric("95th Percentile", f"${np.percentile(final_prices, 95):.2f}")
+
+            # Annualized metrics
+            annual_return = (np.mean(final_prices) / portfolio_current - 1)
+            annual_volatility = np.std(final_prices / portfolio_current)
+
+            colA, colB = st.columns(2)
+            colA.metric("Expected Annual Return", f"{annual_return*100:.2f}%")
+            colB.metric("Simulated Annual Volatility", f"{annual_volatility*100:.2f}%")
