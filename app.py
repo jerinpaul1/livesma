@@ -200,7 +200,7 @@ elif app_choice == "Multi-Asset Monte Carlo Simulator":
         else:
             weights = np.array(weights)
             if not np.isclose(weights.sum(), 1.0):
-                st.error(f"❌ Weights add up to {weights.sum():.4f}. They must equal 1.0.")
+                st.error(f"❌ Weights add up to {weights.sum()*100:.2f}. They must equal 100.")
                 st.stop()
             # Download data
             data = yf.download(tickers, period="1y", auto_adjust=False)
