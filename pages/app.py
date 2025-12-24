@@ -4,20 +4,20 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-# ----------------------------- PAGE SETUP -----------------------------
-st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
-
-# ----------------------------- FRONT PAGE -----------------------------
-st.title("📊 Jerin's Financial Dashboard")
-if st.button("📂 View All My Projects"):
-        st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
-
-st.text("""
-        Welcome! Choose an app from below:
-        - Live SMA Dashboard: View live moving averages and trading signals.
-        - Multi-Asset Monte Carlo Simulator: Run portfolio simulations using Monte Carlo.
-        """)
-app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
+## ----------------------------- PAGE SETUP -----------------------------
+#st.set_page_config(page_title="Jerin's Financial Dashboard", layout="wide")
+#
+## ----------------------------- FRONT PAGE -----------------------------
+#st.title("📊 Jerin's Financial Dashboard")
+#if st.button("📂 View All My Projects"):
+#        st.markdown('<meta http-equiv="refresh" content="0; url=https://jerinpaul.com/projects">', unsafe_allow_html=True)
+#
+#st.text("""
+#        Welcome! Choose an app from below:
+#        - Live SMA Dashboard: View live moving averages and trading signals.
+#        - Multi-Asset Monte Carlo Simulator: Run portfolio simulations using Monte Carlo.
+#        """)
+#app_choice = st.radio("Select an App", ["Home", "Live SMA Dashboard", "Multi-Asset Monte Carlo Simulator"])
 
 # ----------------------------- HOME -----------------------------
 
